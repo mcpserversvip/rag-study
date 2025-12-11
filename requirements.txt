@@ -1,0 +1,46 @@
+# 核心框架
+flask==3.0.0
+flask-cors==4.0.0
+
+# RAG和向量数据库
+llama-index>=0.10.0
+llama-index-core>=0.10.0
+llama-index-embeddings-dashscope>=0.1.0
+llama-index-llms-dashscope>=0.1.0
+llama-index-llms-openai-like>=0.1.0
+
+# 阿里云SDK (先安装,避免冲突)
+dashscope>=1.14.0
+
+# 数据库
+pymysql==1.1.0
+sqlalchemy==2.0.23
+
+# PDF处理
+pypdf==3.17.4
+pdf2image==1.17.0
+pillow==10.1.0
+
+# OpenAI兼容接口
+openai>=1.12.0  # 需要兼容 httpx 0.28.x
+
+# 工具库
+python-dotenv==1.0.0
+pydantic>=2.6.0  # 需要 2.6.0+ 以支持 Python 3.12
+pydantic-settings==2.1.0
+
+# 测试
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+
+# 日志 (使用agentscope兼容的版本)
+loguru>=0.6.0
+
+# 数据处理
+pandas==2.1.4
+openpyxl==3.1.2
+matplotlib>=3.5.0
+
+# 注意: agentscope暂时不安装,因为版本冲突
+# 如果需要AgentScope功能,请单独安装: pip install agentscope==0.0.5

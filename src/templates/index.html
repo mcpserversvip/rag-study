@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>糖尿病诊断医疗助手</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            display: flex;
+            height: calc(100vh - 200px);
+            min-height: 600px;
+        }
+
+        .sidebar {
+            width: 300px;
+            background: #f8f9fa;
+            padding: 20px;
+            border-right: 1px solid #e0e0e0;
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .patient-input {
+            margin-bottom: 20px;
+        }
+
+        .patient-input input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .patient-input input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .patient-info {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: #fafafa;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message-content {
+            display: inline-block;
+            max-width: 70%;
+            padding: 15px 20px;
+            border-radius: 15px;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: #333;
+            border: 1px solid #e0e0e0;
+            border-bottom-left-radius: 5px;
+            text-align: left;
+        }
+
+        .input-area {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .input-form {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-form textarea {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            height: 60px;
+        }
+
+        .input-form textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .input-form button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .input-form button:hover {
+            transform: translateY(-2px);
+        }
+
+        .input-form button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💙 糖尿病诊断医疗助手</h1>
+            <p>基于RAG和智能体技术的专业医疗决策支持系统</p>
+        </div>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <h3>患者信息</h3>
+                <div class="patient-input">
+                    <input type="text" id="patientId" placeholder="输入患者ID查询...">
+                </div>
+                <div id="patientInfo" class="patient-info" style="display: none;">
+                    <div id="patientDetails"></div>
+                </div>
+            </div>
+
+            <div class="chat-area">
+                <div class="messages" id="messages">
+                    <div class="message assistant">
+                        <div class="message-content">
+                            您好!我是您的医疗助手,专注于糖尿病和高血压的诊疗决策支持。<br><br>
+                            💙 我可以帮您:<br>
+                            - 查询医疗指南和诊疗建议<br>
+                            - 分析患者病历和检验结果<br>
+                            - 评估疾病风险<br>
+                            - 提供用药建议<br><br>
+                            ⚠️ 请注意:我的建议仅供参考,具体诊疗请咨询医生。
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-area">
+                    <form class="input-form" id="chatForm">
+                        <textarea id="questionInput" placeholder="请输入您的问题..." required></textarea>
+                        <button type="submit" id="sendBtn">发送</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const messagesDiv = document.getElementById('messages');
+        const chatForm = document.getElementById('chatForm');
+        const questionInput = document.getElementById('questionInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const patientIdInput = document.getElementById('patientId');
+        const patientInfoDiv = document.getElementById('patientInfo');
+        const patientDetailsDiv = document.getElementById('patientDetails');
+
+        let currentPatientId = null;
+
+        // 患者ID输入处理
+        patientIdInput.addEventListener('change', async function() {
+            const patientId = this.value.trim();
+            if (!patientId) {
+                patientInfoDiv.style.display = 'none';
+                currentPatientId = null;
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/patient/${patientId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    currentPatientId = patientId;
+                    
+                    patientDetailsDiv.innerHTML = `
+                        <strong>${data.name}</strong><br>
+                        性别: ${data.gender} | 年龄: ${data.age}岁<br>
+                        身高: ${data.height_cm}cm | 体重: ${data.weight_kg}kg<br>
+                        BMI: ${data.bmi}
+                    `;
+                    patientInfoDiv.style.display = 'block';
+                } else {
+                    alert('未找到该患者');
+                    patientInfoDiv.style.display = 'none';
+                    currentPatientId = null;
+                }
+            } catch (error) {
+                console.error('获取患者信息失败:', error);
+                alert('获取患者信息失败');
+            }
+        });
+
+        // 发送消息
+        chatForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const question = questionInput.value.trim();
+            if (!question) return;
+
+            // 添加用户消息
+            addMessage(question, 'user');
+            questionInput.value = '';
+
+            // 禁用发送按钮
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = '<span class="loading"></span>';
+
+            // 创建助手消息容器
+            const assistantMsg = addMessage('', 'assistant');
+            const contentDiv = assistantMsg.querySelector('.message-content');
+
+            try {
+                // 发送请求
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        question: question,
+                        patient_id: currentPatientId,
+                        enable_safety_check: true
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('请求失败');
+                }
+
+                // 读取流式响应
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    contentDiv.textContent += chunk;
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                }
+
+            } catch (error) {
+                console.error('发送消息失败:', error);
+                contentDiv.textContent = '抱歉,发生了错误,请稍后重试。';
+            } finally {
+                // 恢复发送按钮
+                sendBtn.disabled = false;
+                sendBtn.textContent = '发送';
+            }
+        });
+
+        // 添加消息到界面
+        function addMessage(content, type) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = `<div class="message-content">${content}</div>`;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            return messageDiv;
+        }
+
+        // 支持Enter发送(Shift+Enter换行)
+        questionInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chatForm.dispatchEvent(new Event('submit'));
+            }
+        });
+    </script>
+</body>
+</html>
