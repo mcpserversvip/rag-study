@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 from typing import Optional
 from pydantic_settings import BaseSettings
-from pydantic import Field
+from pydantic import Field, computed_field
 from dotenv import load_dotenv
 
 # 加载.env文件
@@ -55,6 +55,12 @@ class Settings(BaseSettings):
     def mysql_url(self) -> str:
         """获取MySQL连接URL"""
         return f"mysql+pymysql://{self.mysql_user}:{self.mysql_password}@{self.mysql_host}:{self.mysql_port}/{self.mysql_database}?charset=utf8mb4"
+
+    @computed_field
+    @property
+    def project_root(self) -> Path:
+        """获取项目根目录"""
+        return Path(__file__).parent.parent.parent
     
     def validate_api_key(self) -> bool:
         """验证API密钥是否配置"""

@@ -18,6 +18,7 @@ from src.utils.logger import logger
 from src.rag import get_knowledge_builder, create_query_engine
 from src.agent import get_safety_checker, create_medical_tools
 from src.database import get_medical_retriever
+from src.api.statistics import statistics_bp
 
 # 初始化环境
 init_environment()
@@ -25,6 +26,7 @@ init_environment()
 # 创建Flask应用
 app = Flask(__name__)
 CORS(app)  # 启用CORS
+app.register_blueprint(statistics_bp)
 
 # 全局变量
 query_engine = None

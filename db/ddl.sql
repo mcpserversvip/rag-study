@@ -14,7 +14,9 @@ CREATE TABLE IF NOT EXISTS patient_info (
     phone VARCHAR(20),
     address TEXT,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_patient_name (name),
+    INDEX idx_patient_phone (phone)
 );
 
 -- 患者病历表
@@ -32,7 +34,9 @@ CREATE TABLE IF NOT EXISTS medical_records (
     doctor_id INT,
     hospital VARCHAR(100),
     department VARCHAR(50),
-    FOREIGN KEY (patient_id) REFERENCES patient_info(patient_id) ON DELETE CASCADE
+    FOREIGN KEY (patient_id) REFERENCES patient_info(patient_id) ON DELETE CASCADE,
+    INDEX idx_mr_patient_date (patient_id, visit_date),
+    INDEX idx_mr_doctor (doctor_id)
 );
 
 -- 检查检验结果表
@@ -49,7 +53,10 @@ CREATE TABLE IF NOT EXISTS lab_results (
     is_abnormal BOOLEAN,
     test_notes TEXT,
     FOREIGN KEY (patient_id) REFERENCES patient_info(patient_id) ON DELETE CASCADE,
-    FOREIGN KEY (record_id) REFERENCES medical_records(record_id) ON DELETE SET NULL
+    FOREIGN KEY (record_id) REFERENCES medical_records(record_id) ON DELETE SET NULL,
+    INDEX idx_lr_patient_date (patient_id, test_date),
+    INDEX idx_lr_record (record_id),
+    INDEX idx_lr_date_type (test_date, test_type)
 );
 
 -- 用药记录表
@@ -66,7 +73,10 @@ CREATE TABLE IF NOT EXISTS medication_records (
     prescribing_doctor VARCHAR(50),
     is_insulin BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (patient_id) REFERENCES patient_info(patient_id) ON DELETE CASCADE,
-    FOREIGN KEY (record_id) REFERENCES medical_records(record_id) ON DELETE SET NULL
+    FOREIGN KEY (record_id) REFERENCES medical_records(record_id) ON DELETE SET NULL,
+    INDEX idx_med_patient_date (patient_id, medication_date),
+    INDEX idx_med_record (record_id),
+    INDEX idx_med_drug (drug_name)
 );
 
 -- 诊断记录表
@@ -81,7 +91,11 @@ CREATE TABLE IF NOT EXISTS diagnosis_records (
     severity_level ENUM('轻度', '中度', '重度', '危急') DEFAULT '中度',
     icd10_code VARCHAR(20),
     FOREIGN KEY (patient_id) REFERENCES patient_info(patient_id) ON DELETE CASCADE,
-    FOREIGN KEY (record_id) REFERENCES medical_records(record_id) ON DELETE CASCADE
+    FOREIGN KEY (record_id) REFERENCES medical_records(record_id) ON DELETE CASCADE,
+    INDEX idx_diag_patient_date (patient_id, diagnosis_date),
+    INDEX idx_diag_record (record_id),
+    INDEX idx_diag_name (diagnosis_name),
+    INDEX idx_diag_code (diagnosis_code)
 );
 
 -- 高血压风险评估表
@@ -97,7 +111,8 @@ CREATE TABLE IF NOT EXISTS hypertension_risk_assessment (
     clinical_conditions TEXT COMMENT '临床疾患',
     risk_level ENUM('低危', '中危', '高危', '很高危') NOT NULL,
     follow_up_plan TEXT,
-    FOREIGN KEY (patient_id) REFERENCES patient_info(patient_id) ON DELETE CASCADE
+    FOREIGN KEY (patient_id) REFERENCES patient_info(patient_id) ON DELETE CASCADE,
+    INDEX idx_hra_patient_date (patient_id, assessment_date)
 );
 
 -- 糖尿病控制评估表
@@ -113,7 +128,8 @@ CREATE TABLE IF NOT EXISTS diabetes_control_assessment (
     insulin_dosage VARCHAR(50),
     control_status ENUM('良好', '一般', '不佳') NOT NULL,
     complications TEXT,
-    FOREIGN KEY (patient_id) REFERENCES patient_info(patient_id) ON DELETE CASCADE
+    FOREIGN KEY (patient_id) REFERENCES patient_info(patient_id) ON DELETE CASCADE,
+    INDEX idx_dca_patient_date (patient_id, assessment_date)
 );
 
 -- 指南推荐规则表
@@ -126,7 +142,9 @@ CREATE TABLE IF NOT EXISTS guideline_recommendations (
     recommendation_content TEXT NOT NULL,
     evidence_source VARCHAR(200),
     update_date DATE,
-    is_active BOOLEAN DEFAULT TRUE
+    is_active BOOLEAN DEFAULT TRUE,
+    INDEX idx_gr_disease (disease_type),
+    INDEX idx_gr_level (recommendation_level)
 );
 
 -- 系统日志表
@@ -138,5 +156,8 @@ CREATE TABLE IF NOT EXISTS system_logs (
     operation_details TEXT,
     patient_id VARCHAR(50) NULL,
     execution_time_ms INT,
-    status ENUM('成功', '失败', '警告') DEFAULT '成功'
+    status ENUM('成功', '失败', '警告') DEFAULT '成功',
+    INDEX idx_log_time (operation_time),
+    INDEX idx_log_patient (patient_id),
+    INDEX idx_log_status (status)
 );

@@ -1,9 +1,12 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>糖尿病诊断医疗助手</title>
+    <!-- Chart.js for visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
             margin: 0;
@@ -32,6 +35,7 @@
             color: white;
             padding: 30px;
             text-align: center;
+            position: relative;
         }
 
         .header h1 {
@@ -110,8 +114,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         .message.user {
@@ -200,16 +211,277 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+    <style>
+        /* 新增功能样式 */
+        .health-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+            transition: background 0.3s;
+        }
+
+        .health-badge:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .health-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ccc;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .health-indicator.healthy {
+            background-color: #4cd964;
+            box-shadow: 0 0 8px #4cd964;
+        }
+
+        .health-indicator.unhealthy {
+            background-color: #ff3b30;
+            box-shadow: 0 0 8px #ff3b30;
+        }
+
+        .action-buttons {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .action-btn {
+            width: 100%;
+            padding: 12px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #555;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+        }
+
+        .action-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+            background: #f8f9fa;
+            transform: translateX(5px);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(3px);
+            animation: fadeIn 0.3s;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.3s;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            max-height: 85vh;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            margin: 0;
+            color: #495057;
+            font-size: 18px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #adb5bd;
+            line-height: 1;
+        }
+
+        .close-btn:hover {
+            color: #495057;
+        }
+
+        .modal-body {
+            padding: 25px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .json-view {
+            background: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+
+        .risk-badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: white;
+            font-size: 12px;
+        }
+
+        .risk-low {
+            background: #28a745;
+        }
+
+        .risk-medium {
+            background: #fd7e14;
+        }
+
+        .risk-high {
+            background: #dc3545;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #666;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            border-color: #667eea;
+            outline: none;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            transition: opacity 0.2s;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        /* 顶部导航按钮 */
+        .header-nav {
+            display: flex;
+            gap: 15px;
+            margin-top: 15px;
+            justify-content: center;
+        }
+
+        .header-nav-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+            backdrop-filter: blur(5px);
+        }
+
+        .header-nav-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <div class="header">
             <h1>💙 糖尿病诊断医疗助手</h1>
             <p>基于RAG和智能体技术的专业医疗决策支持系统</p>
+            <div class="header-nav">
+                <button class="header-nav-btn" onclick="showInsulinStats()">
+                    📊 胰岛素使用统计
+                </button>
+            </div>
+            <div class="health-badge" id="healthBadge" onclick="checkHealth()" title="点击刷新系统状态">
+                <div class="health-indicator" id="healthIndicator"></div>
+                <span id="healthText">正在检查...</span>
+            </div>
         </div>
 
         <div class="main-content">
@@ -220,6 +492,18 @@
                 </div>
                 <div id="patientInfo" class="patient-info" style="display: none;">
                     <div id="patientDetails"></div>
+                </div>
+
+                <div id="actionButtons" class="action-buttons" style="display: none;">
+                    <button class="action-btn" onclick="showComprehensive()">
+                        📊 查看综合档案
+                    </button>
+                    <button class="action-btn" onclick="assessDiabetes()">
+                        ⚖️ 糖尿病风险评估
+                    </button>
+                    <button class="action-btn" onclick="showMedicationCheck()">
+                        💊 用药安全检查
+                    </button>
                 </div>
             </div>
 
@@ -248,6 +532,19 @@
         </div>
     </div>
 
+    <!-- Modal -->
+    <div id="commonModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">标题</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Content will be injected here -->
+            </div>
+        </div>
+    </div>
+
     <script>
         const messagesDiv = document.getElementById('messages');
         const chatForm = document.getElementById('chatForm');
@@ -260,10 +557,11 @@
         let currentPatientId = null;
 
         // 患者ID输入处理
-        patientIdInput.addEventListener('change', async function() {
+        patientIdInput.addEventListener('change', async function () {
             const patientId = this.value.trim();
             if (!patientId) {
                 patientInfoDiv.style.display = 'none';
+                document.getElementById('actionButtons').style.display = 'none';
                 currentPatientId = null;
                 return;
             }
@@ -273,7 +571,7 @@
                 if (response.ok) {
                     const data = await response.json();
                     currentPatientId = patientId;
-                    
+
                     patientDetailsDiv.innerHTML = `
                         <strong>${data.name}</strong><br>
                         性别: ${data.gender} | 年龄: ${data.age}岁<br>
@@ -281,9 +579,11 @@
                         BMI: ${data.bmi}
                     `;
                     patientInfoDiv.style.display = 'block';
+                    document.getElementById('actionButtons').style.display = 'flex';
                 } else {
                     alert('未找到该患者');
                     patientInfoDiv.style.display = 'none';
+                    document.getElementById('actionButtons').style.display = 'none';
                     currentPatientId = null;
                 }
             } catch (error) {
@@ -293,9 +593,9 @@
         });
 
         // 发送消息
-        chatForm.addEventListener('submit', async function(e) {
+        chatForm.addEventListener('submit', async function (e) {
             e.preventDefault();
-            
+
             const question = questionInput.value.trim();
             if (!question) return;
 
@@ -363,12 +663,346 @@
         }
 
         // 支持Enter发送(Shift+Enter换行)
-        questionInput.addEventListener('keydown', function(e) {
+        questionInput.addEventListener('keydown', function (e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 chatForm.dispatchEvent(new Event('submit'));
             }
         });
+
+        // --- 新增功能逻辑 ---
+
+        // 1. 健康检查
+        async function checkHealth() {
+            const indicator = document.getElementById('healthIndicator');
+            const text = document.getElementById('healthText');
+
+            try {
+                const response = await fetch('/api/health');
+                const data = await response.json();
+
+                if (data.status === 'healthy') {
+                    indicator.className = 'health-indicator healthy';
+                    text.textContent = '系统正常';
+
+                    // 构建详细状态提示
+                    let detail = "系统组件状态:\n";
+                    for (const [key, val] of Object.entries(data.components)) {
+                        detail += `${key}: ${val ? '✅' : '❌'}\n`;
+                    }
+                    document.getElementById('healthBadge').title = detail;
+                } else {
+                    indicator.className = 'health-indicator unhealthy';
+                    text.textContent = '系统异常';
+                }
+            } catch (error) {
+                indicator.className = 'health-indicator unhealthy';
+                text.textContent = '连接失败';
+            }
+        }
+        // 页面加载时检查
+        checkHealth();
+        setInterval(checkHealth, 60000); // 每分钟刷新
+
+        // 2. 模态框控制
+        const modal = document.getElementById('commonModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalBody = document.getElementById('modalBody');
+
+        function openModal(title, content) {
+            modalTitle.textContent = title;
+            modalBody.innerHTML = content;
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+        }
+
+        // 点击模态框外部关闭
+        window.onclick = function (event) {
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+
+        // 3. 查看综合档案
+        async function showComprehensive() {
+            if (!currentPatientId) return;
+
+            openModal('综合档案', '<div class="loading" style="margin: 20px auto; display: block;"></div>');
+
+            try {
+                const response = await fetch(`/api/patient/${currentPatientId}/comprehensive`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const jsonStr = JSON.stringify(data, null, 2);
+                    openModal('📂 综合档案', `
+                        <div style="margin-bottom: 15px; color: #666;">
+                            <p>患者ID: <strong>${currentPatientId}</strong></p>
+                            <p>数据包含: 基本信息, 诊断记录, 检验结果, 用药历史</p>
+                        </div>
+                        <pre class="json-view">${jsonStr}</pre>
+                    `);
+                } else {
+                    openModal('错误', '获取档案失败');
+                }
+            } catch (error) {
+                openModal('错误', '请求出错: ' + error.message);
+            }
+        }
+
+        // 4. 糖尿病风险评估
+        async function assessDiabetes() {
+            if (!currentPatientId) return;
+
+            openModal('风险评估', '<div class="loading" style="margin: 20px auto; display: block;"></div><p style="text-align:center">正在分析医疗数据...</p>');
+
+            try {
+                const response = await fetch(`/api/assessment/diabetes/${currentPatientId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const result = data.assessment;
+
+                    // 解析Markdown简单的格式 (这里只做简单的HTML转换)
+                    let htmlContent = result.replace(/\n/g, '<br>');
+                    htmlContent = htmlContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+                    openModal('⚖️ 糖尿病风险评估报告', `
+                        <div style="font-size: 15px; line-height: 1.8;">
+                            ${htmlContent}
+                        </div>
+                    `);
+                } else {
+                    openModal('错误', '评估失败');
+                }
+            } catch (error) {
+                openModal('错误', '请求出错: ' + error.message);
+            }
+        }
+
+        // 5. 用药安全检查 UI
+        function showMedicationCheck() {
+            openModal('💊 用药安全检查', `
+                <div class="form-group">
+                    <label>患者ID: <strong>${currentPatientId}</strong></label>
+                </div>
+                <div class="form-group">
+                    <label>拟用药物名称</label>
+                    <input type="text" id="drugNameInput" placeholder="例如: 二甲双胍, 阿司匹林...">
+                </div>
+                <button class="btn-primary" onclick="checkMedication()">开始检查</button>
+                <div id="checkResult" style="margin-top: 20px;"></div>
+            `);
+        }
+
+        // 执行用药检查
+        async function checkMedication() {
+            const drugName = document.getElementById('drugNameInput').value.trim();
+            const resultDiv = document.getElementById('checkResult');
+
+            if (!drugName) {
+                alert('请输入药物名称');
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="loading"></div> Check...';
+
+            try {
+                const response = await fetch('/api/safety/medication', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        patient_id: currentPatientId,
+                        medication: drugName
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const result = data.result;
+                    // 简单样式化
+                    let color = '#28a745'; // Green
+                    if (result.includes('警告') || result.includes('风险') || result.includes('慎用')) color = '#dc3545'; // Red
+                    if (result.includes('注意') || result.includes('建议')) color = '#fd7e14'; // Orange
+
+                    resultDiv.innerHTML = `
+                        <div style="background: ${color}15; border-left: 4px solid ${color}; padding: 15px; border-radius: 4px;">
+                            <strong>检查结果:</strong> <br>
+                            ${result}
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div style="color: red;">检查失败: ${data.error}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div style="color: red;">请求出错: ${error.message}</div>`;
+            }
+        }
+
+        // 6. 胰岛素统计图表 - 支持多维度选择
+        let insulinChart = null;
+        let currentDimension = 'gender';
+
+        async function showInsulinStats(dimension = 'gender') {
+            currentDimension = dimension;
+            openModal('📊 胰岛素使用统计', '<div class="loading" style="margin: 20px auto; display: block;"></div><div style="text-align:center">正在加载数据...</div>');
+
+            try {
+                const response = await fetch(`/api/statistics/insulin?dimension=${dimension}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    // 计算使用率
+                    const usageRate = data.total_patients > 0
+                        ? ((data.classification.using_insulin / data.total_patients) * 100).toFixed(1)
+                        : 0;
+
+                    const content = `
+                        <div style="padding: 10px;">
+                            <!-- 维度选择器 -->
+                            <div style="margin-bottom: 20px; text-align: center;">
+                                <span style="margin-right: 10px; color: #666;">选择分组维度：</span>
+                                <select id="dimensionSelect" onchange="showInsulinStats(this.value)" 
+                                    style="padding: 8px 15px; border: 2px solid #667eea; border-radius: 20px; 
+                                           font-size: 14px; cursor: pointer; background: white; color: #333;">
+                                    <option value="gender" ${dimension === 'gender' ? 'selected' : ''}>性别</option>
+                                    <option value="age" ${dimension === 'age' ? 'selected' : ''}>年龄段</option>
+                                    <option value="height" ${dimension === 'height' ? 'selected' : ''}>身高</option>
+                                    <option value="weight" ${dimension === 'weight' ? 'selected' : ''}>体重</option>
+                                </select>
+                            </div>
+
+                            <!-- 统计卡片 -->
+                            <div style="display: flex; justify-content: space-around; margin-bottom: 20px; text-align: center; flex-wrap: wrap; gap: 10px;">
+                                <div style="min-width: 80px;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #28a745;">${data.total_patients}</div>
+                                    <div style="font-size: 11px; color: #666;">患者总数</div>
+                                </div>
+                                <div style="min-width: 80px;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #667eea;">${usageRate}%</div>
+                                    <div style="font-size: 11px; color: #666;">使用率</div>
+                                </div>
+                                <div style="min-width: 80px;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #36a2eb;">${data.classification.using_insulin}</div>
+                                    <div style="font-size: 11px; color: #666;">使用胰岛素</div>
+                                </div>
+                                <div style="min-width: 80px;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #ff6384;">${data.classification.not_using_insulin}</div>
+                                    <div style="font-size: 11px; color: #666;">未使用</div>
+                                </div>
+                                <div style="min-width: 80px;">
+                                    <div style="font-size: 24px; font-weight: bold; color: #fd7e14;">${data.classification.not_measured}</div>
+                                    <div style="font-size: 11px; color: #666;">未测量</div>
+                                </div>
+                            </div>
+
+                            <!-- 说明 -->
+                            <div style="margin-bottom: 15px; padding: 10px; background: #f8f9fa; border-radius: 8px; font-size: 12px; color: #666;">
+                                <strong>📋 分类说明：</strong>两列均有值→使用胰岛素 | 两列均为空→未使用 | 仅一列有值→未测量
+                            </div>
+
+                            <!-- 图表 -->
+                            <div style="height: 280px;">
+                                <canvas id="insulinChart"></canvas>
+                            </div>
+
+                            <div style="margin-top: 10px; font-size: 11px; color: #999; text-align: center;">
+                                当前分组: ${data.dimension_label} | 数据来源: 糖尿病病例统计.xlsx
+                            </div>
+                        </div>
+                    `;
+
+                    openModal(`📊 胰岛素使用分布 (按${data.dimension_label})`, content);
+
+                    // 渲染图表
+                    const ctx = document.getElementById('insulinChart').getContext('2d');
+
+                    // 准备数据
+                    const labels = data.distribution.map(d => d.label);
+                    const usingData = data.distribution.map(d => d.using);
+                    const notUsingData = data.distribution.map(d => d.not_using);
+                    const notMeasuredData = data.distribution.map(d => d.not_measured);
+
+                    // 颜色配置
+                    const colors = [
+                        'rgba(54, 162, 235, 0.7)',
+                        'rgba(255, 99, 132, 0.7)',
+                        'rgba(75, 192, 192, 0.7)',
+                        'rgba(255, 206, 86, 0.7)',
+                        'rgba(153, 102, 255, 0.7)'
+                    ];
+
+                    if (insulinChart) {
+                        insulinChart.destroy();
+                    }
+
+                    insulinChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [
+                                {
+                                    label: '使用胰岛素',
+                                    data: usingData,
+                                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                                    borderColor: 'rgba(54, 162, 235, 1)',
+                                    borderWidth: 1
+                                },
+                                {
+                                    label: '未使用',
+                                    data: notUsingData,
+                                    backgroundColor: 'rgba(201, 203, 207, 0.7)',
+                                    borderColor: 'rgba(201, 203, 207, 1)',
+                                    borderWidth: 1
+                                },
+                                {
+                                    label: '未测量',
+                                    data: notMeasuredData,
+                                    backgroundColor: 'rgba(255, 159, 64, 0.7)',
+                                    borderColor: 'rgba(255, 159, 64, 1)',
+                                    borderWidth: 1
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                },
+                                tooltip: {
+                                    mode: 'index',
+                                    intersect: false,
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    stacked: true,
+                                },
+                                y: {
+                                    stacked: true,
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: '人数'
+                                    }
+                                }
+                            }
+                        }
+                    });
+
+                } else {
+                    openModal('错误', '加载数据失败: ' + data.error);
+                }
+            } catch (error) {
+                console.error(error);
+                openModal('错误', '请求出错: ' + error.message);
+            }
+        }
     </script>
 </body>
+
 </html>
