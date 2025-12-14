@@ -162,3 +162,45 @@ def get_insulin_statistics():
     except Exception as e:
         logger.error(f"Error processing statistics: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+def get_patient_excel_data(patient_id: str) -> dict:
+    """
+    从Excel文件中获取指定患者的统计数据
+    
+    Args:
+        patient_id: 患者ID (对应Excel中的'病人诊疗号')
+        
+    Returns:
+        包含患者统计数据的字典，如果未找到则返回None
+    """
+    try:
+        if not EXCEL_FILE_PATH.exists():
+            logger.warning(f"Data file not found: {EXCEL_FILE_PATH}")
+            return None
+
+        # 读取Excel
+        df = pd.read_excel(EXCEL_FILE_PATH)
+        
+        # 查找匹配的行
+        patient_row = df[df['病人诊疗号'] == patient_id]
+        
+        if patient_row.empty:
+            return None
+            
+        # 转换为字典
+        data = patient_row.iloc[0].to_dict()
+        
+        # 处理NaN值
+        clean_data = {}
+        for k, v in data.items():
+            if pd.isna(v):
+                clean_data[k] = None
+            else:
+                clean_data[k] = v
+                
+        return clean_data
+        
+    except Exception as e:
+        logger.error(f"获取患者Excel数据失败: {e}")
+        return None

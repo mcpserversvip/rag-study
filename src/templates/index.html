@@ -736,20 +736,132 @@
                 const response = await fetch(`/api/patient/${currentPatientId}/comprehensive`);
                 if (response.ok) {
                     const data = await response.json();
-                    const jsonStr = JSON.stringify(data, null, 2);
-                    openModal('📂 综合档案', `
-                        <div style="margin-bottom: 15px; color: #666;">
-                            <p>患者ID: <strong>${currentPatientId}</strong></p>
-                            <p>数据包含: 基本信息, 诊断记录, 检验结果, 用药历史</p>
-                        </div>
-                        <pre class="json-view">${jsonStr}</pre>
-                    `);
+
+                    // 构建HTML内容
+                    let html = '<div style="display: flex; flex-direction: column; gap: 20px;">';
+
+                    // 1. 基本信息
+                    if (data.patient_info) {
+                        const info = data.patient_info;
+                        html += `
+                            <div class="section">
+                                <h4 style="margin-bottom: 10px; color: #667eea; border-bottom: 2px solid #eee; padding-bottom: 5px;">👤 基本信息</h4>
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                                    <div><strong>ID:</strong> ${info.patient_id}</div>
+                                    <div><strong>姓名:</strong> ${info.name}</div>
+                                    <div><strong>性别:</strong> ${info.gender}</div>
+                                    <div><strong>年龄:</strong> ${info.age}岁</div>
+                                    <div><strong>身高:</strong> ${info.height_cm}cm</div>
+                                    <div><strong>体重:</strong> ${info.weight_kg}kg</div>
+                                    <div><strong>BMI:</strong> ${info.bmi}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // 2. 诊断记录
+                    if (data.diagnoses && data.diagnoses.length > 0) {
+                        html += createTable('🏥 诊断记录', data.diagnoses, [
+                            { header: '日期', key: 'diagnosis_date', format: formatDate },
+                            { header: '诊断', key: 'condition_name' },
+                            { header: '类型', key: 'diagnosis_type' },
+                            { header: '状态', key: 'status' }
+                        ]);
+                    }
+
+                    // 3. 检验结果
+                    if (data.lab_results && data.lab_results.length > 0) {
+                        html += createTable('🧪 近期检验结果', data.lab_results, [
+                            { header: '日期', key: 'test_date', format: formatDate },
+                            { header: '项目', key: 'test_item' },
+                            { header: '结果', key: 'result_value' },
+                            { header: '单位', key: 'unit' },
+                            { header: '参考范围', key: 'reference_range' },
+                            { header: '状态', key: 'is_abnormal', format: (v) => v ? '<span class="risk-badge risk-high">异常</span>' : '<span class="risk-badge risk-low">正常</span>' }
+                        ]);
+                    }
+
+                    // 4. 用药记录
+                    if (data.medications && data.medications.length > 0) {
+                        html += createTable('💊 用药记录', data.medications, [
+                            { header: '开始日期', key: 'start_date', format: formatDate },
+                            { header: '药物', key: 'medication_name' },
+                            { header: '剂量', key: 'dosage' },
+                            { header: '频率', key: 'frequency' },
+                            { header: '状态', key: 'status' }
+                        ]);
+                    }
+
+                    // 5. 就诊记录
+                    if (data.medical_records && data.medical_records.length > 0) {
+                        html += createTable('👨‍⚕️ 就诊记录', data.medical_records, [
+                            { header: '日期', key: 'visit_date', format: formatDate },
+                            { header: '科室', key: 'department' },
+                            { header: '医生', key: 'doctor_name' },
+                            { header: '医院', key: 'hospital_name' },
+                            { header: '主诉', key: 'chief_complaint', style: 'max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;', title: true }
+                        ]);
+                    }
+
+                    html += '</div>';
+                    openModal('📂 综合档案', html);
                 } else {
                     openModal('错误', '获取档案失败');
                 }
             } catch (error) {
                 openModal('错误', '请求出错: ' + error.message);
             }
+        }
+
+        // 辅助函数：创建表格
+        function createTable(title, data, columns) {
+            let tableHtml = `
+                <div class="section">
+                    <h4 style="margin-bottom: 10px; color: #667eea; border-bottom: 2px solid #eee; padding-bottom: 5px;">${title}</h4>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <thead>
+                                <tr style="background: #f1f3f5; text-align: left;">
+            `;
+
+            columns.forEach(col => {
+                tableHtml += `<th style="padding: 10px; border-bottom: 2px solid #dee2e6; white-space: nowrap;">${col.header}</th>`;
+            });
+
+            tableHtml += `
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+
+            data.forEach(row => {
+                tableHtml += `<tr style="border-bottom: 1px solid #eee;">`;
+                columns.forEach(col => {
+                    let value = row[col.key] || '-';
+                    if (col.format) {
+                        value = col.format(value);
+                    }
+                    const style = col.style ? `style="${col.style}"` : '';
+                    const titleAttr = col.title ? `title="${row[col.key]}"` : '';
+                    tableHtml += `<td style="padding: 10px;" ${style} ${titleAttr}>${value}</td>`;
+                });
+                tableHtml += `</tr>`;
+            });
+
+            tableHtml += `
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            return tableHtml;
+        }
+
+        // 辅助函数：格式化日期
+        function formatDate(dateStr) {
+            if (!dateStr) return '-';
+            // 如果是时间戳或特殊格式，可能需要处理，这里假设是ISO或标准日期字符串，简单截取前10位(YYYY-MM-DD)
+            return String(dateStr).substring(0, 10);
         }
 
         // 4. 糖尿病风险评估

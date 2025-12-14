@@ -18,7 +18,8 @@ from src.utils.logger import logger
 from src.rag import get_knowledge_builder, create_query_engine
 from src.agent import get_safety_checker, create_medical_tools
 from src.database import get_medical_retriever
-from src.api.statistics import statistics_bp
+from src.database import get_medical_retriever
+from src.api.statistics import statistics_bp, get_patient_excel_data
 
 # 初始化环境
 init_environment()
@@ -120,15 +121,35 @@ def chat():
             """生成流式响应"""
             try:
                 # 如果提供了患者ID,添加患者上下文
+                current_question = question
+                
+                # 如果提供了患者ID,添加患者上下文
                 patient_context = None
                 if patient_id:
                     patient_info = medical_retriever.get_patient_info(patient_id)
                     if patient_info:
                         patient_context = f"患者: {patient_info['name']}, 年龄: {patient_info['age']}岁, BMI: {patient_info['bmi']}"
-                
+
+                if patient_context:
+                    current_question = f"【患者综合档案】\n{patient_context}\n\n【用户问题】\n{question}"
+
+                # if patient_id:
+                #     # 获取综合数据 (DB)
+                #     comprehensive_data = medical_retriever.get_patient_comprehensive_data(patient_id)
+                    
+                #     # 获取Excel统计数据
+                #     excel_data = get_patient_excel_data(patient_id)
+                #     if excel_data:
+                #         comprehensive_data['excel_statistics'] = excel_data
+                    
+                #     if comprehensive_data.get('patient_info'):
+                #         import json
+                #         context_str = json.dumps(comprehensive_data, ensure_ascii=False, indent=2, default=str)
+                #         current_question = f"【患者综合档案】\n{context_str}\n\n【用户问题】\n{question}"
+
                 # 流式查询
                 response_text = ""
-                for chunk in query_engine.query_stream(question):
+                for chunk in query_engine.query_stream(current_question):
                     response_text += chunk
                     yield chunk
                 
